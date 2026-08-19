@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Блокнот</title>
+    <style>
+        :root {
+            --bg: #f5f7fa;
+            --card: #ffffff;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --radius: 8px;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text);
+        }
+        .app {
+            width: 100%;
+            max-width: 1200px;
+            height: 90vh;
+            background: var(--card);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            display: flex;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 280px;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: #fafbfc;
+        }
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .new-note-btn {
+            flex: 1;
+            padding: 10px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .new-note-btn:hover { background: var(--primary-hover); }
+        .tool-btn {
+            padding: 10px;
+            background: #f1f5f9;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+            transition: background 0.2s, color 0.2s;
+        }
+        .tool-btn:hover { background: #e2e8f0; color: var(--text); }
+        .notes-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .note-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .note-item:hover { background: #f1f5f9; }
+        .note-item.active { background: #e2e8f0; }
+        .note-title {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .note-preview {
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .note-date {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        .editor {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .editor-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .title-input {
+            flex: 1;
+            padding: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            outline: none;
+        }
+        .delete-btn {
+            padding: 10px 14px;
+            background: #fee2e2;
+            color: var(--danger);
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .delete-btn:hover { background: #fecaca; }
+        .content-textarea {
+            flex: 1;
+            padding: 16px;
+            font-size: 16px;
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: inherit;
+            line-height: 1.6;
+        }
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        @media (max-width: 700px) {
+            .app { flex-direction: column; height: 95vh; }
+            .sidebar { width: 100%; height: 40%; border-right: none; border-bottom: 1px solid var(--border); }
+            .editor { height: 60%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Сайдбар со списком заметок -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <button class="new-note-btn" id="newNoteBtn" title="Создать новую заметку">
+                    <i class="fa-solid fa-plus"></i> Новая
+                </button>
+                <button class="tool-btn" id="exportBtn" title="Сохранить">
+                    <i class="fa-solid fa-file-export"></i>
+                </button>
+                <button class="tool-btn" id="importBtn" title="Загрузить новые заметки
+!!!обязательно сохрани свои заметки!!!">
+                    <i class="fa-solid fa-file-import"></i>
+                </button>
+                <input type="file" id="importFileInput" accept=".json" style="display: none;">
+            </div>
+            <div class="notes-list" id="notesList"></div>
+        </div>
+
+        <!-- Редактор заметки -->
+        <div class="editor" id="editor">
+            <div class="editor-header">
+                <input type="text" class="title-input" id="titleInput" placeholder="Название заметки...">
+                <button class="delete-btn" id="deleteBtn" title="Удалить заметку">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+            <textarea class="content-textarea" id="contentTextarea" placeholder="Начните печатать..."></textarea>
+        </div>
+    </div>
+
+    <!-- Font Awesome для иконок -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script>
+        // Получаем элементы DOM
+        const notesList = document.getElementById('notesList');
+        const titleInput = document.getElementById('titleInput');
+        const contentTextarea = document.getElementById('contentTextarea');
+        const newNoteBtn = document.getElementById('newNoteBtn');
+        const deleteBtn = document.getElementById('deleteBtn');
+        const editor = document.getElementById('editor');
+        const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+        const importFileInput = document.getElementById('importFileInput');
+
+        // Ключ для localStorage
+        const STORAGE_KEY = 'notebook_app_notes';
+
+        // Текущая выбранная заметка (id)
+        let currentNoteId = null;
+        // Все заметки
+        let notes = [];
+
+        // Загрузка заметок из localStorage
+        function loadNotes() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    notes = JSON.parse(stored);
+                } catch (e) {
+                    notes = [];
+                }
+            } else {
+                // Если нет данных, создаем демонстрационную заметку
+                notes = [
+                    {
+                        id: 'demo1',
+                        title: 'Добро пожаловать!',
+                        content: 'Это ваш блокнот. Создавайте заметки, редактируйте их, и всё автоматически сохраняется в браузере.',
+                        updatedAt: Date.now()
+                    }
+                ];
+                saveNotes();
+            }
+        }
+
+        // Сохранение заметок в localStorage
+        function saveNotes() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+        }
+
+        // Отображение списка заметок
+        function renderNotesList() {
+            if (!notesList) return;
+            // Сортировка по дате изменения (новые сверху)
+            const sorted = [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+
+            if (sorted.length === 0) {
+                notesList.innerHTML = '<div class="empty-state"><i class="fa-regular fa-folder-open"></i><p>Нет заметок</p></div>';
+                return;
+            }
+
+            notesList.innerHTML = sorted.map(note => {
+                const preview = note.content.slice(0, 60).replace(/\n/g, ' ');
+                const date = new Date(note.updatedAt).toLocaleString('ru-RU');
+                const activeClass = note.id === currentNoteId ? 'active' : '';
+                return `
+                    <div class="note-item ${activeClass}" data-id="${note.id}">
+                        <div class="note-title">${escapeHtml(note.title) || 'Без названия'}</div>
+                        <div class="note-preview">${escapeHtml(preview) || 'Пусто...'}</div>
+                        <div class="note-date">${date}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Отображение выбранной заметки в редакторе
+        function renderEditor() {
+            const note = notes.find(n => n.id === currentNoteId);
+            if (note) {
+                titleInput.value = note.title;
+                contentTextarea.value = note.content;
+                editor.style.display = 'flex';
+            } else {
+                titleInput.value = '';
+                contentTextarea.value = '';
+                editor.style.display = 'flex';
+            }
+        }
+
+        // Экранизация HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Создание новой заметки
+        function createNewNote() {
+            const newNote = {
+                id: 'note_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                title: '',
+                content: '',
+                updatedAt: Date.now()
+            };
+            notes.push(newNote);
+            currentNoteId = newNote.id;
+            saveNotes();
+            renderNotesList();
+            renderEditor();
+            titleInput.focus();
+        }
+
+        // Удаление выбранной заметки
+        function deleteCurrentNote() {
+            if (!currentNoteId) return;
+            if (confirm('Удалить эту заметку?')) {
+                notes = notes.filter(n => n.id !== currentNoteId);
+                currentNoteId = notes.length > 0 ? notes[0].id : null;
+                saveNotes();
+                renderNotesList();
+                renderEditor();
+            }
+        }
+
+        // Обновление текущей заметки (автосохранение)
+        function updateCurrentNote() {
+            if (!currentNoteId) return;
+            const note = notes.find(n => n.id === currentNoteId);
+            if (note) {
+                note.title = titleInput.value;
+                note.content = contentTextarea.value;
+                note.updatedAt = Date.now();
+                saveNotes();
+                renderNotesList();
+            }
+        }
+
+        // Выбор заметки из списка
+        function selectNote(id) {
+            currentNoteId = id;
+            renderNotesList();
+            renderEditor();
+        }
+
+        // Экспорт заметок в JSON файл
+        function exportNotes() {
+            const dataStr = JSON.stringify(notes, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `notes_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Импорт заметок из JSON файла
+        function importNotes(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        notes = imported;
+                        // Если загруженные заметки не содержат updatedAt, добавляем
+                        notes.forEach(n => {
+                            if (!n.updatedAt) n.updatedAt = Date.now();
+                            if (!n.id) n.id = 'note_' + Date.now() + '_' + Math.random().toString(36).substr(2,9);
+                        });
+                        saveNotes();
+                        // Выбираем самую свежую заметку
+                        if (notes.length > 0) {
+                            currentNoteId = notes.reduce((a,b) => a.updatedAt > b.updatedAt ? a : b).id;
+                        } else {
+                            currentNoteId = null;
+                        }
+                        renderNotesList();
+                        renderEditor();
+                    } else {
+                        alert('Неверный формат файла. Ожидается массив заметок.');
+                    }
+                } catch (err) {
+                    alert('Ошибка при разборе JSON: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Инициализация приложения
+        function init() {
+            loadNotes();
+            // Выбираем самую свежую заметку
+            if (notes.length > 0) {
+                currentNoteId = notes.reduce((a, b) => a.updatedAt > b.updatedAt ? a : b).id;
+            } else {
+                currentNoteId = null;
+            }
+            renderNotesList();
+            renderEditor();
+
+            // Обработчики событий
+            newNoteBtn.addEventListener('click', createNewNote);
+            deleteBtn.addEventListener('click', deleteCurrentNote);
+
+            titleInput.addEventListener('input', updateCurrentNote);
+            contentTextarea.addEventListener('input', updateCurrentNote);
+
+            notesList.addEventListener('click', (e) => {
+                const item = e.target.closest('.note-item');
+                if (item) {
+                    const id = item.dataset.id;
+                    selectNote(id);
+                }
+            });
+
+            // Обработчики экспорта и импорта
+            exportBtn.addEventListener('click', exportNotes);
+            importBtn.addEventListener('click', () => {
+                importFileInput.click();
+            });
+            importFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    importNotes(e.target.files[0]);
+                    e.target.value = ''; // очищаем, чтобы можно было импортировать тот же файл повторно
+                }
+            });
+        }
+
+        // Запуск
+        init();
+    </script>
+</body>
+</html>
